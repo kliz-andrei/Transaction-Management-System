@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Records</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.22/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Transaction Records</h1>
+
+        <form action="{{ url_for('filter_transactions') }}" method="post" class="mb-3">
+            <div class="form-row align-items-center">
+                <div class="col-auto">
+                    <input type="number" class="form-control mb-2" id="min_amount" name="min_amount" placeholder="Min Amount">
+                </div>
+                <div class="col-auto">
+                    <input type="number" class="form-control mb-2" id="max_amount" name="max_amount" placeholder="Max Amount">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary mb-2">Filter</button>
+                </div>
+            </div>
+        </form>
+
+        <form action="{{ url_for('get_transactions') }}" method="get" class="mb-3">
+            <div class="form-row align-items-center">
+                <div class="col-auto">
+                    <select class="form-control" id="sort_by" name="sort_by" onchange="this.form.submit()">
+                        <option value="date_desc">Sort by Date (Newest First)</option>
+                        <option value="date_asc">Sort by Date (Oldest First)</option>
+                        <option value="amount_desc">Sort by Amount (Highest First)</option>
+                        <option value="amount_asc">Sort by Amount (Lowest First)</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <div class="mb-3">
+            <button class="btn btn-success" onclick="exportToCSV()">Export to CSV</button>
+            <button class="btn btn-info" onclick="exportToPDF()">Export to PDF</button>
+        </div>
+
+        <table class="table" id="transaction-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Tags</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ transaction.date }}</td>
+                    <td>{{ transaction.amount }}</td>
+                    <td>{{ transaction.category }}</td>
+                    <td>{{ transaction.tags|join(', ') }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_transaction', transaction_id=transaction.id) }}" class="btn btn-warning btn-sm">Edit</a>
+                        <form action="{{ url_for('delete_transaction', transaction_id=transaction.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function exportToCSV() {
+            let csv = [];
+            let rows = document.querySelectorAll("#transaction-table tr");
+            
+            for (let row of rows) {
+                let cols = row.querySelectorAll("td, th");
+                let rowArray = [];
+                for (let col of cols) {
+                    rowArray.push(col.innerText);
+                }
+                csv.push(rowArray.join(","));
+            }
+
+            let csvString = csv.join("\n");
+            let downloadLink = document.createElement("a");
+            let blob = new Blob([csvString], { type: "text/csv" });
+            let url = URL.createObjectURL(blob);
+            downloadLink.href = url;
+            downloadLink.download = "transactions.csv";
+
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.autoTable({ html: '#transaction-table' });
+            doc.save('transactions.pdf');
+        }
+    </script>
+</body>
+</html>
